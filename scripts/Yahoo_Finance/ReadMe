@@ -1,1 +1,43 @@
+# scripts/yahoo
 
+Pipeline for the Yahoo Finance benchmark dataset (25 coins, 2017-2025).
+
+## Order of execution
+
+1. **01_feature_engineering_labeling_yahoo.py**
+   Input: `data/raw/YahooFinance_25coins_2017_2025.csv`
+   Cleans the raw data, computes 20 features (returns, volatility, volume
+   ratios, moving averages, RSI, momentum, candlestick shape), and builds
+   the unified pump-and-dump label (7-day horizon, return >= 30%,
+   volume >= 3x — identical definition to the multi-exchange dataset).
+   Output: `data/processed/YahooFinance_dataset_learning_v2.csv`
+
+2. **02_train_eval_split_protocol_yahoo.py**
+   Input: `data/processed/YahooFinance_dataset_learning_v2.csv`
+   Trains RandomForest / LightGBM / XGBoost across a 2x3 design: split
+   type (Random 80/20 vs Chronological 80/20) x feature protocol
+   (Biased: 20 features, Standard: 13 features, Ultra: 8 features).
+   Output: `results/tables/Yahoo_split_x_protocol_summary_v2.csv`,
+   trained models in `models/`
+
+3. **03_ultrastrict_walkforward_yahoo.py**
+   Input: `data/processed/YahooFinance_dataset_learning_v2.csv`
+   Annual walk-forward evaluation (train on all years before the test
+   year) using the full 20-feature set. Compares against the
+   Biased/Chronological result from script 02.
+   Output: `results/tables/Yahoo_UltraStrict_by_year_v2.csv`,
+   `results/tables/Yahoo_UltraStrict_summary_v2.csv`
+
+4. **04_bootstrap_ci_standard_yahoo.py**
+   Input: `data/processed/YahooFinance_dataset_learning_v2.csv`
+   Bootstrap confidence intervals (1000 resamples) for ROC-AUC and
+   PR-AUC on the Standard chronological 80/20 split, full 20-feature set.
+   Output: `results/tables/Yahoo_Standard_Bootstrap_CI_20features_v2.csv`
+
+## Note on terminology
+
+"Ultra" in script 02 (`FEATURES_ULTRA`) refers to a reduced 8-feature
+set, evaluated under both split types. "UltraStrict" in script 03 refers
+to the annual walk-forward split, evaluated with the full 20-feature
+set. These are two independent axes (feature count vs. split strategy)
+that share similar naming — do not conflate them.
