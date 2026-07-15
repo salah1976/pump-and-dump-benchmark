@@ -1,1 +1,86 @@
+# scripts/
 
+Reproducibility code for the pump-and-dump (P&D) leakage-detection study.
+All scripts are organized by data source. Each subdirectory has its own
+`README.md` with per-script details (inputs, outputs, order of execution).
+
+## Structure
+
+```
+scripts/
+├── multiexchange/   Gate.io, Kraken, KuCoin, MEXC (via CCXT)
+├── yahoo/            Yahoo Finance, 25 coins, 2017-2025
+└── yobit/             Personal YoBit trading history (empirical validation)
+```
+
+## Shared design
+
+All three pipelines follow the same general logic and share a single
+pump-and-dump label definition (Formula 1):
+
+```
+label = 1  if  future_return_7d  >= 30%
+           AND future_volume_ratio_7d >= 3.0x
+```
+
+with a 7-day horizon. This definition is applied consistently across the
+multi-exchange and Yahoo Finance datasets, so that results are
+comparable across sources.
+
+Each pipeline generally follows this sequence:
+1. **Feature engineering** — build technical indicators from raw OHLCV data
+2. **Labeling** — apply the unified pump-and-dump definition
+3. **Model training / evaluation** — RandomForest, LightGBM, XGBoost under
+   increasingly strict evaluation protocols (random split → chronological
+   split → walk-forward)
+4. **Interpretability** — feature importance, SHAP, ablation studies
+5. **Robustness checks** — bootstrap confidence intervals, cross-exchange
+   or cross-year generalization
+
+## Evaluation protocols (terminology used throughout)
+
+| Protocol | Split | What it tests |
+|---|---|---|
+| Biased | Random 80/20 (stratified) | Naive baseline, prone to leakage |
+| Standard | Chronological 80/20 (quantile split) | Leakage-free, single train/test cut |
+| UltraStrict | Annual walk-forward | Leakage-free, multiple train/test cuts across years |
+
+The Yahoo Finance pipeline additionally varies the **number of features**
+(Biased: 20, Standard: 13, Ultra: 8) as a separate axis from the split
+strategy — see `scripts/yahoo/README.md` for the distinction between
+"Ultra" (feature count) and "UltraStrict" (split strategy).
+
+## Requirements
+
+```
+pandas
+numpy
+scikit-learn
+lightgbm
+xgboost
+shap
+matplotlib
+scipy
+joblib
+```
+
+Install with:
+
+```
+pip install -r requirements.txt
+```
+
+## Data
+
+Raw and processed datasets are not stored in this repository. See the
+companion Zenodo record(s) for the published datasets, and place
+downloaded files under `data/raw/` and `data/processed/` following the
+paths referenced in each script.
+
+## Known gaps
+
+- `scripts/yobit/` depends on a trade-enrichment script that has not
+  been recovered yet (see `scripts/yobit/README.md`).
+- Script numbering is not always continuous within a subdirectory;
+  gaps correspond to earlier script versions that were superseded and
+  removed from the pipeline (documented in each subdirectory's README).
