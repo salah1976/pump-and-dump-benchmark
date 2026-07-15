@@ -29,9 +29,9 @@ separately, only the `raw/` file does.
 
 | Dataset | DOI | Contents |
 |---|---|---|
-| Yahoo Finance benchmark | 10.5281/zenodo.21377192 | `YahooFinance_dataset_learning_v2.csv` + documentation |
-| Multi-exchange benchmark | [ADD DOI] | `ALL_coins_daily_multi_exchange_v5.csv` (raw) |
-| YoBit personal trading history | [ADD DOI] | Personal trading records used for Level 4 validation |
+| Yahoo Finance benchmark | https://zenodo.org/uploads/21377192 | `YahooFinance_dataset_learning_v2.csv` + documentation |
+| Multi-exchange benchmark | https://zenodo.org/uploads/21377192 | `ALL_coins_daily_multi_exchange_v5.csv` (raw) |
+| YoBit personal trading history | https://zenodo.org/uploads/21379106| Personal trading records used for Level 4 validation |
 
 ## Column definitions
 
