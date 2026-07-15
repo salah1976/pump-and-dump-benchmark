@@ -1,0 +1,162 @@
+"""
+Label generation for cryptocurrency pump-and-dump datasets.
+"""
+
+import pandas as pd
+
+
+# =============================================================================
+# Utilities
+# =============================================================================
+
+def label_summary(df, label_col="label"):
+    """
+    Print class distribution.
+    """
+
+    summary = (
+        df[label_col]
+        .value_counts()
+        .rename_axis("label")
+        .reset_index(name="count")
+        .sort_values("label")
+    )
+
+    summary["percent"] = (
+        100 * summary["count"] / len(df)
+    )
+
+    print("\nLabel Distribution")
+    print("-" * 50)
+    print(summary)
+    print(f"\nTotal samples : {len(df):,}")
+    print(f"Positive class: {df[label_col].sum():,}")
+    print(f"Ratio         : {100*df[label_col].mean():.2f}%")
+
+    return summary
+
+
+# =============================================================================
+# Yahoo Finance Benchmark
+# =============================================================================
+
+def build_yahoo_labels(
+    df,
+    horizon=7,
+    pump_threshold=15,
+    volume_threshold=2,
+    dump_threshold=-10,
+):
+    """
+    Yahoo Finance benchmark labeling.
+    """
+
+    future_price = (
+        df.groupby("ticker")["close"]
+        .shift(-horizon)
+    )
+
+    future_return = (
+        (future_price / df["close"] - 1) * 100
+    )
+
+    df["future_return"] = future_return
+
+    df["label"] = (
+        (
+            (df["return_3d"] > pump_threshold)
+            &
+            (df["volume_ratio7"] > volume_threshold)
+            &
+            (future_return < dump_threshold)
+        )
+    ).astype(int)
+
+    df = df.dropna(
+        subset=["future_return"]
+    ).reset_index(drop=True)
+
+    label_summary(df)
+
+    return df
+
+
+# =============================================================================
+# Multi-Exchange Benchmark
+# =============================================================================
+
+def build_multiexchange_labels(
+    df,
+    horizon=7,
+    pump_threshold=0.15,
+    max_drawdown=0.08,
+):
+    """
+    Multi-exchange benchmark labeling.
+    """
+
+    future_max = (
+        df.groupby(["coin", "exchange"])["close"]
+        .transform(
+            lambda s:
+            s.shift(-1)
+            .rolling(
+                horizon,
+                min_periods=1
+            )
+            .max()
+        )
+    )
+
+    future_min = (
+        df.groupby(["coin", "exchange"])["close"]
+        .transform(
+            lambda s:
+            s.shift(-1)
+            .rolling(
+                horizon,
+                min_periods=1
+            )
+            .min()
+        )
+    )
+
+    df["future_return"] = (
+        future_max - df["close"]
+    ) / df["close"]
+
+    df["future_drawdown"] = (
+        df["close"] - future_min
+    ) / df["close"]
+
+    volatility_condition = (
+        df["volatility_7d"]
+        < df["volatility_7d"].median()
+    )
+
+    volume_condition = (
+        df["volume_ratio20"] > 1
+    )
+
+    df["label"] = (
+        (
+            (df["future_return"] >= pump_threshold)
+            &
+            (df["future_drawdown"] <= max_drawdown)
+            &
+            volatility_condition
+            &
+            volume_condition
+        )
+    ).astype(int)
+
+    df = df.dropna(
+        subset=[
+            "future_return",
+            "future_drawdown",
+        ]
+    ).reset_index(drop=True)
+
+    label_summary(df)
+
+    return df
