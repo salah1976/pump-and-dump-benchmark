@@ -1,0 +1,2 @@
+n_positions,n_profitable,pct_profitable,n_unprofitable,total_net_cashflow_usd,total_gains_usd,total_losses_usd,share_top3_losses_pct,share_top3_gains_pct,n_coins_for_80pct_losses,claim_supported
+121,53,43.80165289256198,68,-23629.202254220014,52656.900073640005,-76286.10232786,84.36674731127982,96.37924312321144,3,False
