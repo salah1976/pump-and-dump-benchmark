@@ -1,1 +1,47 @@
+# scripts/yobit
 
+Analysis of Salah's personal YoBit trading history (9 years, 6,933 trades,
+168 pairs), used as empirical validation of the detection-profitability
+disconnect (Level 4 of the evaluation framework).
+
+## Order of execution
+
+0. **(missing) trade enrichment script**
+   Input: raw YoBit trading history export
+   Expected to compute, for each trade, the premium paid versus market
+   price (`premium_pct`) and join with daily market prices.
+   Expected output: `results/tables/yobit_trades_enriched_v2.csv`
+   This script has not been recovered yet — without it, script 01 below
+   cannot be run from scratch on the raw trading history.
+
+1. **01_level4_yobit_windowed_analysis.py**
+   Input: `results/tables/yobit_trades_enriched_v2.csv`,
+   `data/processed/dataset_features.csv`,
+   `data/processed/dataset_learning_v2.csv`
+   Flags trades within a +/-7 day window of a labeled pump event
+   (`near_pump_7d`), tests whether premiums paid are higher near pump
+   events (Mann-Whitney U), tests the correlation between premium paid
+   and forward 7-day return (Spearman), and computes a yearly breakdown
+   of trading activity.
+   Output: `results/tables/yobit_trades_enriched_v3.csv`,
+   `results/tables/yobit_windowed_premium_test.csv`,
+   `results/tables/yobit_premium_forward_return_correlation.csv`,
+   `results/tables/yobit_yearly_breakdown.csv`,
+   figures in `results/figures/`
+
+2. **02_level4_waves_case_study.py**
+   Input: `results/tables/yobit_trades_enriched_v3.csv`,
+   `data/processed/dataset_features.csv`,
+   `data/processed/dataset_learning_v2.csv`
+   Computes the exact distance in days to the nearest labeled pump per
+   trade, the overall alert coverage across evaluable BUY trades, and
+   isolates the WAVES/USD chronology (April-May 2022) as a case study.
+   Output: `results/tables/level4_alert_coverage_summary.csv`,
+   `results/tables/level4_alert_coverage_by_coin.csv`,
+   `results/tables/level4_waves_chronology_v2.csv`
+
+## Note
+
+This dataset is personal trading data, not a public market benchmark —
+see the dataset's own `TERMS.md` / `DATA_STATEMENT.md` for details before
+reuse.
