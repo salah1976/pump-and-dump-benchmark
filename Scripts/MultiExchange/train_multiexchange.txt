@@ -1,0 +1,207 @@
+"""
+Training pipeline - Multi-Exchange dataset.
+"""
+
+from pathlib import Path
+
+import pandas as pd
+
+from config import TARGET
+from features import MULTIEXCHANGE_FEATURES
+
+from models import build_models
+from trainer import Trainer
+
+from protocols import (
+    biased_split,
+    standard_split,
+    ultrastrict_split
+)
+
+###########################################################
+# PATHS
+###########################################################
+
+PROJECT = Path("../")
+
+DATA = PROJECT / "data/processed/dataset_learning.csv"
+
+MODELS = PROJECT / "models/multi_exchange"
+
+RESULTS = PROJECT / "results"
+
+###########################################################
+# LOAD DATA
+###########################################################
+
+df = pd.read_csv(DATA)
+
+df["timestamp"] = pd.to_datetime(df["timestamp"])
+
+###########################################################
+# MODELS
+###########################################################
+
+trainer = Trainer(
+
+    models=build_models(),
+
+    output_dir=MODELS
+
+)
+
+all_results = []
+
+###########################################################
+# PROTOCOL 1
+###########################################################
+
+X_train, X_test, y_train, y_test = biased_split(
+
+    df,
+
+    MULTIEXCHANGE_FEATURES,
+
+    TARGET
+
+)
+
+results = trainer.fit_and_evaluate(
+
+    "Biased",
+
+    X_train,
+
+    y_train,
+
+    X_test,
+
+    y_test
+
+)
+
+all_results.append(results)
+
+###########################################################
+# PROTOCOL 2
+###########################################################
+
+X_train, X_test, y_train, y_test = standard_split(
+
+    df,
+
+    MULTIEXCHANGE_FEATURES,
+
+    TARGET,
+
+    date_column="timestamp"
+
+)
+
+results = trainer.fit_and_evaluate(
+
+    "Standard",
+
+    X_train,
+
+    y_train,
+
+    X_test,
+
+    y_test
+
+)
+
+all_results.append(results)
+
+###########################################################
+# PROTOCOL 3
+###########################################################
+
+wf_results = []
+
+for year, X_train, X_test, y_train, y_test in ultrastrict_split(
+
+        df,
+
+        MULTIEXCHANGE_FEATURES,
+
+        TARGET,
+
+        "timestamp"
+
+):
+
+    results = trainer.fit_and_evaluate(
+
+        f"UltraStrict_{year}",
+
+        X_train,
+
+        y_train,
+
+        X_test,
+
+        y_test
+
+    )
+
+    results["Year"] = year
+
+    wf_results.append(results)
+
+wf_results = pd.concat(
+
+    wf_results,
+
+    ignore_index=True
+
+)
+
+summary = (
+
+    wf_results
+
+    .groupby("Model")
+
+    .mean(numeric_only=True)
+
+    .reset_index()
+
+)
+
+summary["Protocol"] = "UltraStrict"
+
+all_results.append(summary)
+
+###########################################################
+# SAVE
+###########################################################
+
+results = pd.concat(
+
+    all_results,
+
+    ignore_index=True
+
+)
+
+RESULTS.mkdir(
+
+    parents=True,
+
+    exist_ok=True
+
+)
+
+results.to_csv(
+
+    RESULTS /
+
+    "multiexchange_protocol_summary.csv",
+
+    index=False
+
+)
+
+print(results)
