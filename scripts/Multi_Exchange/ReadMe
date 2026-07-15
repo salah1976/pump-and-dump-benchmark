@@ -1,1 +1,47 @@
+# scripts/multiexchange
 
+Pipeline for the multi-exchange dataset (Gate.io, Kraken, KuCoin, MEXC via CCXT).
+
+## Order of execution
+
+1. **01_feature_engineering_multiexchange.py**
+   Input: `data/raw/ALL_coins_daily_multi_exchange_v5.csv`
+   Computes returns, volatility, volume ratios, moving averages, candlestick
+   shape, momentum, EMA, RSI, ATR, Bollinger band width, and distance to
+   rolling min/max.
+   Output: `data/processed/dataset_features.csv`
+
+2. **02_build_dataset_learning_v2_multiexchange.py**
+   Input: `data/processed/dataset_features.csv`
+   Normalizes `upper_shadow`/`lower_shadow` by closing price (fixes a
+   coin-identity scale leakage) and builds the pump-and-dump label
+   (7-day horizon, return >= 30%, volume >= 3x).
+   Output: `data/processed/dataset_learning_v2.csv`
+
+3. **03_train_eval_protocols_multiexchange.py**
+   Input: `data/processed/dataset_learning_v2.csv`
+   Trains RandomForest / LightGBM / XGBoost under three evaluation
+   protocols: Biased (random 80/20), Standard (chronological 80/20),
+   UltraStrict (annual walk-forward).
+   Output: `results/tables/multiexchange_protocol_summary_v2.csv`,
+   trained models in `models_v2/`
+
+4. **04_interpretability_ablation_multiexchange.py**
+   Input: `data/processed/dataset_learning_v2.csv`
+   Threshold optimization, feature importance, SHAP, bootstrap confidence
+   intervals, and ablation study (Leave-One-Group-Out / Group-Only) on
+   the Standard protocol.
+   Output: tables and figures in `results/tables/` and `results/figures/`
+
+5. **05_cross_exchange_generalization_multiexchange.py**
+   Input: `data/processed/dataset_learning_v2.csv`,
+   `results/tables/best_thresholds_v2.csv`
+   Tests generalization to an unseen exchange, with a train/test split
+   constrained both by exchange and by time (no future leakage).
+   Output: `results/tables/cross_exchange_results_v2_temporal.csv`
+
+
+
+
+filtering, and the latter used an outdated label definition replaced by
+the one in `03_build_dataset_learning_v2_multiexchange.py`.
